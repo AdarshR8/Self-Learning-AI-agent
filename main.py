@@ -5,6 +5,14 @@ Interactive CLI Demonstration (Inspired by Dave Ebbelaar's Tutorial)
 """
 
 import sys
+import logging
+import warnings
+
+# Suppress harmless optional feature warnings from dependencies
+warnings.filterwarnings("ignore")
+logging.getLogger("mem0").setLevel(logging.ERROR)
+logging.getLogger("qdrant_client").setLevel(logging.ERROR)
+
 from src.config import Config
 
 try:
