@@ -1,22 +1,25 @@
 from typing import List, Dict, Optional
-from openai import OpenAI
 from src.config import Config
 from src.memory import MemoryManager
 
 class SelfLearningAIAgent:
     """
-    Self-Learning AI Agent based on Dave Ebbelaar's architecture.
-    Features:
-    - Persistent long-term memory via Mem0
-    - Dynamic contextual memory retrieval
-    - Automatic learning from user interactions
+    Self-Learning AI Agent based on Dave Ebbelaar's tutorial architecture.
+    Supports Google Gemini (free) and OpenAI with persistent Mem0 memory.
     """
 
     def __init__(self, user_id: Optional[str] = None):
         self.user_id = user_id or Config.DEFAULT_USER_ID
-        self.memory = MemoryManager(user_id=self.user_id)
-        self.client = OpenAI(api_key=Config.OPENAI_API_KEY)
+        self.provider = Config.get_active_provider()
         self.model = Config.MODEL_NAME
+        self.memory = MemoryManager(user_id=self.user_id)
+
+        if self.provider == "gemini":
+            from google import genai
+            self.gemini_client = genai.Client(api_key=Config.GEMINI_API_KEY)
+        else:
+            from openai import OpenAI
+            self.openai_client = OpenAI(api_key=Config.OPENAI_API_KEY)
 
         self.system_prompt_template = (
             "You are a helpful, self-learning AI assistant. "
@@ -28,13 +31,12 @@ class SelfLearningAIAgent:
 
     def chat(self, user_input: str) -> str:
         """
-        Main interaction cycle:
-        1. Retrieve relevant memories for the current prompt.
-        2. Construct memory-augmented system prompt.
-        3. Generate response with OpenAI.
-        4. Save interaction turn to memory so the agent self-learns.
+        1. Retrieve relevant memories.
+        2. Formulate memory-infused prompt.
+        3. Generate response.
+        4. Add interaction to memory for continuous self-learning.
         """
-        # 1. Search for relevant memories
+        # 1. Retrieve relevant memories
         relevant_memories = self.memory.search(user_input, user_id=self.user_id)
         memories_str = (
             "\n".join(f"- {m}" for m in relevant_memories)
@@ -45,20 +47,26 @@ class SelfLearningAIAgent:
         # 2. Build augmented system prompt
         system_prompt = self.system_prompt_template.format(memories=memories_str)
 
-        messages = [
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": user_input},
-        ]
-
         # 3. Call LLM
-        response = self.client.chat.completions.create(
-            model=self.model,
-            messages=messages,
-            temperature=0.7,
-        )
-        assistant_reply = response.choices[0].message.content
+        if self.provider == "gemini":
+            response = self.gemini_client.models.generate_content(
+                model=self.model,
+                contents=f"{system_prompt}\n\nUser: {user_input}",
+            )
+            assistant_reply = response.text
+        else:
+            messages = [
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_input},
+            ]
+            response = self.openai_client.chat.completions.create(
+                model=self.model,
+                messages=messages,
+                temperature=0.7,
+            )
+            assistant_reply = response.choices[0].message.content
 
-        # 4. Self-Learning: Store new interaction in Mem0
+        # 4. Store interaction in Mem0 for self-learning
         interaction = [
             {"role": "user", "content": user_input},
             {"role": "assistant", "content": assistant_reply},

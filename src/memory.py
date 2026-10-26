@@ -11,38 +11,55 @@ class MemoryManager:
 
     def __init__(self, user_id: Optional[str] = None):
         self.user_id = user_id or Config.DEFAULT_USER_ID
+        provider = Config.get_active_provider()
         
-        # Configure Mem0 with OpenAI as LLM & Embedder
-        config = {
-            "llm": {
-                "provider": "openai",
-                "config": {
-                    "model": Config.MODEL_NAME,
-                    "temperature": 0.2,
-                }
-            },
-            "embedder": {
-                "provider": "openai",
-                "config": {
-                    "model": "text-embedding-3-small"
+        if provider == "gemini":
+            config = {
+                "llm": {
+                    "provider": "gemini",
+                    "config": {
+                        "model": Config.MODEL_NAME,
+                        "temperature": 0.2,
+                        "api_key": Config.GEMINI_API_KEY,
+                    }
+                },
+                "embedder": {
+                    "provider": "gemini",
+                    "config": {
+                        "model": "models/text-embedding-004",
+                        "api_key": Config.GEMINI_API_KEY,
+                    }
                 }
             }
-        }
+        else:
+            config = {
+                "llm": {
+                    "provider": "openai",
+                    "config": {
+                        "model": Config.MODEL_NAME,
+                        "temperature": 0.2,
+                        "api_key": Config.OPENAI_API_KEY,
+                    }
+                },
+                "embedder": {
+                    "provider": "openai",
+                    "config": {
+                        "model": "text-embedding-3-small",
+                        "api_key": Config.OPENAI_API_KEY,
+                    }
+                }
+            }
         
         # Initialize Mem0 client
         self.client = Memory.from_config(config)
 
     def add(self, messages: List[Dict[str, str]], user_id: Optional[str] = None) -> Any:
-        """
-        Extract and store relevant memories, facts, and preferences from messages.
-        """
+        """Extract and store relevant memories and preferences from messages."""
         uid = user_id or self.user_id
         return self.client.add(messages, user_id=uid)
 
     def search(self, query: str, user_id: Optional[str] = None, limit: int = 5) -> List[str]:
-        """
-        Retrieve relevant memories matching the user's latest query or context.
-        """
+        """Retrieve relevant memories matching the query."""
         uid = user_id or self.user_id
         try:
             results = self.client.search(query=query, user_id=uid, limit=limit)
@@ -65,9 +82,7 @@ class MemoryManager:
             return []
 
     def get_all(self, user_id: Optional[str] = None) -> List[str]:
-        """
-        Get all memories currently stored for the specified user.
-        """
+        """Get all memories currently stored for the user."""
         uid = user_id or self.user_id
         try:
             results = self.client.get_all(user_id=uid)
@@ -90,9 +105,7 @@ class MemoryManager:
             return []
 
     def reset(self, user_id: Optional[str] = None):
-        """
-        Clear all memories for the user.
-        """
+        """Clear all memories for the user."""
         uid = user_id or self.user_id
         try:
             self.client.delete_all(user_id=uid)
