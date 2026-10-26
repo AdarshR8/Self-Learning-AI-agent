@@ -1,99 +1,76 @@
-import json
-import random
-from collections import deque
-from typing import Dict, List, Tuple
+from typing import List, Dict, Optional
+from openai import OpenAI
+from src.config import Config
+from src.memory import MemoryManager
 
-class SelfLearningAgent:
+class SelfLearningAIAgent:
     """
-    A reinforcement learning agent that self-learns optimal behavior
-    through exploration, temporal-difference updates, and experience memory.
+    Self-Learning AI Agent based on Dave Ebbelaar's architecture.
+    Features:
+    - Persistent long-term memory via Mem0
+    - Dynamic contextual memory retrieval
+    - Automatic learning from user interactions
     """
 
-    def __init__(
-        self,
-        num_states: int,
-        num_actions: int,
-        learning_rate: float = 0.1,
-        discount_factor: float = 0.95,
-        epsilon_start: float = 1.0,
-        epsilon_min: float = 0.05,
-        epsilon_decay: float = 0.995,
-        replay_capacity: int = 1000,
-    ):
-        self.num_states = num_states
-        self.num_actions = num_actions
-        self.lr = learning_rate
-        self.gamma = discount_factor
-        self.epsilon = epsilon_start
-        self.epsilon_min = epsilon_min
-        self.epsilon_decay = epsilon_decay
+    def __init__(self, user_id: Optional[str] = None):
+        self.user_id = user_id or Config.DEFAULT_USER_ID
+        self.memory = MemoryManager(user_id=self.user_id)
+        self.client = OpenAI(api_key=Config.OPENAI_API_KEY)
+        self.model = Config.MODEL_NAME
 
-        # Q-table: state -> [action_values]
-        self.q_table: Dict[int, List[float]] = {
-            s: [0.0] * num_actions for s in range(num_states)
-        }
+        self.system_prompt_template = (
+            "You are a helpful, self-learning AI assistant. "
+            "You have access to persistent long-term memory about the user. "
+            "Use the provided relevant memories to personalize your responses, remember user preferences, "
+            "and continuously adapt without asking the user to repeat themselves.\n\n"
+            "Relevant memories about the user:\n{memories}\n"
+        )
 
-        # Experience Replay Memory: buffer of (s, a, r, s', done)
-        self.memory = deque(maxlen=replay_capacity)
+    def chat(self, user_input: str) -> str:
+        """
+        Main interaction cycle:
+        1. Retrieve relevant memories for the current prompt.
+        2. Construct memory-augmented system prompt.
+        3. Generate response with OpenAI.
+        4. Save interaction turn to memory so the agent self-learns.
+        """
+        # 1. Search for relevant memories
+        relevant_memories = self.memory.search(user_input, user_id=self.user_id)
+        memories_str = (
+            "\n".join(f"- {m}" for m in relevant_memories)
+            if relevant_memories
+            else "No previous memories found."
+        )
 
-    def select_action(self, state: int, training: bool = True) -> int:
-        """Epsilon-greedy action selection."""
-        if training and random.random() < self.epsilon:
-            return random.randint(0, self.num_actions - 1)
+        # 2. Build augmented system prompt
+        system_prompt = self.system_prompt_template.format(memories=memories_str)
 
-        q_values = self.q_table.get(state, [0.0] * self.num_actions)
-        max_q = max(q_values)
-        best_actions = [a for a, q in enumerate(q_values) if q == max_q]
-        return random.choice(best_actions)
+        messages = [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": user_input},
+        ]
 
-    def record_experience(
-        self, state: int, action: int, reward: float, next_state: int, done: bool
-    ):
-        """Store interaction into memory for offline replay learning."""
-        self.memory.append((state, action, reward, next_state, done))
+        # 3. Call LLM
+        response = self.client.chat.completions.create(
+            model=self.model,
+            messages=messages,
+            temperature=0.7,
+        )
+        assistant_reply = response.choices[0].message.content
 
-    def learn_step(
-        self, state: int, action: int, reward: float, next_state: int, done: bool
-    ):
-        """Online Bellman equation update."""
-        current_q = self.q_table[state][action]
-        if done:
-            target_q = reward
-        else:
-            best_future_q = max(self.q_table[next_state])
-            target_q = reward + self.gamma * best_future_q
+        # 4. Self-Learning: Store new interaction in Mem0
+        interaction = [
+            {"role": "user", "content": user_input},
+            {"role": "assistant", "content": assistant_reply},
+        ]
+        self.memory.add(interaction, user_id=self.user_id)
 
-        # TD update
-        self.q_table[state][action] += self.lr * (target_q - current_q)
+        return assistant_reply
 
-    def replay_learn(self, batch_size: int = 32):
-        """Learn from a random sample of past experiences (experience replay)."""
-        if len(self.memory) < batch_size:
-            return
+    def get_known_memories(self) -> List[str]:
+        """Return all memories the agent has learned about the user."""
+        return self.memory.get_all(user_id=self.user_id)
 
-        batch = random.sample(self.memory, batch_size)
-        for s, a, r, ns, d in batch:
-            self.learn_step(s, a, r, ns, d)
-
-    def decay_exploration(self):
-        """Decay epsilon to transition from exploration to exploitation."""
-        self.epsilon = max(self.epsilon_min, self.epsilon * self.epsilon_decay)
-
-    def save_model(self, file_path: str):
-        """Save Q-table and agent configuration to JSON."""
-        data = {
-            "num_states": self.num_states,
-            "num_actions": self.num_actions,
-            "epsilon": self.epsilon,
-            "q_table": self.q_table,
-        }
-        with open(file_path, "w", encoding="utf-8") as f:
-            json.dump(data, f, indent=2)
-
-    def load_model(self, file_path: str):
-        """Load learned Q-table from JSON."""
-        with open(file_path, "r", encoding="utf-8") as f:
-            data = json.load(f)
-        self.epsilon = data.get("epsilon", self.epsilon_min)
-        # Convert string keys back to integers
-        self.q_table = {int(k): v for k, v in data["q_table"].items()}
+    def reset_memory(self) -> bool:
+        """Reset all learned memories."""
+        return self.memory.reset(user_id=self.user_id)

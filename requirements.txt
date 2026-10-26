@@ -1,4 +1,5 @@
-numpy>=1.24.0
-matplotlib>=3.7.0
-tqdm>=4.65.0
-# torch>=2.0.0 (optional for deep learning / neural network agent)
+openai>=1.40.0
+mem0ai>=0.1.20
+python-dotenv>=1.0.0
+rich>=13.7.0
+pydantic>=2.0.0

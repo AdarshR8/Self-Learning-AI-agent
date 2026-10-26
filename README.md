@@ -1,16 +1,17 @@
 # Self-Learning AI Agent 🧠
 
-A modular reinforcement learning (RL) framework implementing an adaptive, self-learning agent capable of discovering optimal policies through trial-and-error, experience replay, and temporal-difference learning.
+A Python framework for building **Self-Learning AI Agents with Long-Term Persistent Memory**, based on the tutorial by **Dave Ebbelaar** ([YouTube Reference](https://www.youtube.com/watch?v=ynhl8KjjS3Y)).
 
 ---
 
-## 🌟 Features
+## 💡 The Core Idea
 
-- **Self-Improving Policy:** Uses Q-Learning / Temporal Difference updates to learn optimal actions without prior domain knowledge.
-- **Experience Replay Buffer:** Stores past interaction episodes to break correlation and stabilize learning convergence.
-- **Exploration vs. Exploitation ($\epsilon$-decay):** Dynamically transitions from random exploration to high-confidence exploitation.
-- **Configurable Environment:** Modular grid world with configurable state spaces, dynamic hazards, and goal topologies.
-- **Model Checkpointing:** Serializes and loads learned action-value policies to/from JSON.
+Standard LLM chat applications are **stateless** — each conversation begins from scratch, and older context is lost as it falls out of the token window.
+
+This project implements a **self-learning architecture** using **[Mem0](https://github.com/mem0ai/mem0)** and **OpenAI**:
+1. **Dynamic Memory Extraction:** The agent automatically extracts personal details, preferences, technical choices, and instructions from user interactions.
+2. **Contextual Memory Retrieval:** When a query is asked, the agent semantically searches stored memories and enriches the system prompt with relevant facts.
+3. **Continuous Adaptation:** Over time, the agent avoids repeated questions, recalls preferences, adapts to past feedback, and becomes truly personalized across sessions.
 
 ---
 
@@ -20,53 +21,81 @@ A modular reinforcement learning (RL) framework implementing an adaptive, self-l
 self-learning-ai-agent/
 ├── src/
 │   ├── __init__.py
-│   ├── agent.py          # Self-learning agent with Q-table & experience replay
-│   ├── environment.py    # Environment state dynamics & reward signals
-│   └── trainer.py        # Episode execution, metric tracking, & evaluation
-├── checkpoints/          # Saved model weights/Q-tables
-├── main.py               # Main training & evaluation entry point
-├── requirements.txt      # Dependencies
+│   ├── config.py         # Configuration & environment variable loader
+│   ├── memory.py         # Mem0 interface (add, search, get_all, reset)
+│   └── agent.py          # Self-Learning Agent with memory-augmented prompt
+├── .env.example          # Environment variable template
+├── .gitignore            # Git ignore rules
+├── requirements.txt      # Python dependencies
+├── main.py               # Interactive CLI chat with memory inspection
 └── README.md
+```
+
+### Flow Diagram
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor User
+    participant CLI as main.py
+    participant Agent as SelfLearningAgent
+    participant Memory as Mem0 Memory Layer
+    participant LLM as OpenAI (GPT-4o-mini)
+
+    User->>CLI: Sends message (e.g., "I prefer TypeScript over Python")
+    CLI->>Agent: chat(user_input)
+    Agent->>Memory: search(user_input, user_id)
+    Memory-->>Agent: Returns relevant past memories
+    Agent->>LLM: Prompt + Injected Memories + User Message
+    LLM-->>Agent: Generates personalized response
+    Agent->>Memory: add([user_msg, assistant_msg], user_id)
+    Note over Memory: Automatically extracts & persists<br/>new facts/preferences to memory!
+    Agent-->>CLI: Returns response
+    CLI-->>User: Displays response
 ```
 
 ---
 
-## 🚀 Quick Start
+## 🚀 Setup & Installation
 
 ### 1. Prerequisites
 - Python 3.10+
+- OpenAI API Key
 
-### 2. Run Directly
-The core reinforcement learning agent runs using Python's standard library with zero external dependencies required for quick testing:
-
-```bash
-python main.py
-```
-
-### 3. Optional Dependencies
-For extended analytics and plotting:
+### 2. Install Dependencies
 ```bash
 pip install -r requirements.txt
 ```
 
----
-
-## 📊 Training Workflow
-
-```mermaid
-graph TD
-    A[Environment State s] --> B[Agent Action Selection]
-    B -->|epsilon-greedy| C[Execute Action a in Environment]
-    C --> D[Observe Reward r & Next State s']
-    D --> E[Store in Experience Memory]
-    D --> F[Temporal Difference Update]
-    E --> G[Sample Replay Batch]
-    G --> F
-    F --> H[Update Policy & Decay Epsilon]
-    H --> A
+### 3. Configure API Key
+Create a `.env` file in the root folder (copy from `.env.example`):
+```bash
+cp .env.example .env
+```
+Add your OpenAI key in `.env`:
+```env
+OPENAI_API_KEY=sk-...
+MODEL_NAME=gpt-4o-mini
+DEFAULT_USER_ID=adarsh
 ```
 
 ---
 
-## 📄 License
-MIT License. Created by [@AdarshR8](https://github.com/AdarshR8).
+## 💬 Usage
+
+Start the interactive session:
+```bash
+python main.py
+```
+
+### In-Session Commands:
+- `/memories` — Displays all knowledge and preferences the agent has learned about you so far.
+- `/reset` — Clears all persistent memory to start fresh.
+- `/exit` — Exits the application.
+
+---
+
+## 📚 References & Credits
+- Tutorial Video: [How to Build Self-Learning AI Agents (Python Tutorial)](https://www.youtube.com/watch?v=ynhl8KjjS3Y) by **Dave Ebbelaar**
+- Memory Engine: [Mem0](https://github.com/mem0ai/mem0)
+- Author: [@AdarshR8](https://github.com/AdarshR8)
