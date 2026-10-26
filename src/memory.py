@@ -1,4 +1,5 @@
 import os
+from pathlib import Path
 from typing import List, Dict, Any, Optional
 from mem0 import Memory
 from src.config import Config
@@ -26,8 +27,15 @@ class MemoryManager:
                 "embedder": {
                     "provider": "gemini",
                     "config": {
-                        "model": "models/text-embedding-004",
+                        "model": "models/gemini-embedding-001",
                         "api_key": Config.GEMINI_API_KEY,
+                    }
+                },
+                "vector_store": {
+                    "provider": "qdrant",
+                    "config": {
+                        "collection_name": "mem0_gemini",
+                        "embedding_model_dims": 768,
                     }
                 }
             }
@@ -47,6 +55,13 @@ class MemoryManager:
                         "model": "text-embedding-3-small",
                         "api_key": Config.OPENAI_API_KEY,
                     }
+                },
+                "vector_store": {
+                    "provider": "qdrant",
+                    "config": {
+                        "collection_name": "mem0_openai",
+                        "embedding_model_dims": 1536,
+                    }
                 }
             }
         
@@ -59,10 +74,10 @@ class MemoryManager:
         return self.client.add(messages, user_id=uid)
 
     def search(self, query: str, user_id: Optional[str] = None, limit: int = 5) -> List[str]:
-        """Retrieve relevant memories matching the query."""
+        """Retrieve relevant memories matching the query using filters."""
         uid = user_id or self.user_id
         try:
-            results = self.client.search(query=query, user_id=uid, limit=limit)
+            results = self.client.search(query=query, top_k=limit, filters={"user_id": uid})
             memories = []
             if isinstance(results, dict) and "results" in results:
                 items = results["results"]
@@ -85,7 +100,7 @@ class MemoryManager:
         """Get all memories currently stored for the user."""
         uid = user_id or self.user_id
         try:
-            results = self.client.get_all(user_id=uid)
+            results = self.client.get_all(filters={"user_id": uid})
             memories = []
             if isinstance(results, dict) and "results" in results:
                 items = results["results"]

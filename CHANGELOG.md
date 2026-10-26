@@ -11,12 +11,20 @@ This document tracks all project milestones, commits, and step-by-step progress 
 | **1. Project Foundation** | ✅ Completed | Setup initial repository structure, .gitignore, and dependency requirements. | `README.md`, `requirements.txt`, `.gitignore` |
 | **2. Mem0 Memory Architecture** | ✅ Completed | Implemented persistent long-term memory layer with automatic learning and recall. | `src/memory.py`, `src/agent.py`, `main.py` |
 | **3. Free Gemini Model Support** | ✅ Completed | Configured free Google Gemini integration for reasoning and embeddings. | `src/config.py`, `.env.example` |
-| **4. Interactive Testing** | ⏳ Next | Add API key, launch terminal session, verify agent recalls past facts across restarts. | `main.py`, `.env` |
+| **4. Interactive Verification** | ✅ Completed | Verified end-to-end self-learning cycle and cross-session fact recall. | `src/memory.py`, `src/config.py` |
 | **5. Advanced Extensions** | 📋 Planned | Add multi-user memory switching, user profile summaries, and export capabilities. | `src/` |
 
 ---
 
 ## 📝 Commit History Explained
+
+### `d2...` — feat: Complete Milestone 4 - Verify persistent self-learning memory loop with Gemini
+* **Why:** Aligns vector dimensions (768-d for Gemini embedding models) and verifies that facts stated in one session are automatically remembered in future sessions.
+* **What changed:** Configured `Qdrant` with 768-dim embeddings, updated Mem0 search filters, and set default model to `gemini-flash-lite-latest`.
+
+### `1e0dfe0` — docs: Add CHANGELOG tracking milestones and explaining all commit steps
+* **Why:** Adds milestone tracking and plain-English breakdown of all commits.
+* **What changed:** Created `CHANGELOG.md`.
 
 ### `ca3f7f1` — Add free Google Gemini support for LLM and embeddings in Mem0
 * **Why:** Enables running the self-learning agent with a 100% free API (Google AI Studio) so no paid OpenAI credits are required.

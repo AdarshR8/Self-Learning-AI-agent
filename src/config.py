@@ -8,7 +8,7 @@ load_dotenv(BASE_DIR / ".env")
 class Config:
     GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
     OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
-    MODEL_NAME = os.getenv("MODEL_NAME", "gemini-1.5-flash")
+    MODEL_NAME = os.getenv("MODEL_NAME", "gemini-flash-lite-latest")
     DEFAULT_USER_ID = os.getenv("DEFAULT_USER_ID", "adarsh")
 
     @classmethod
