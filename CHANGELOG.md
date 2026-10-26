@@ -18,7 +18,11 @@ This document tracks all project milestones, commits, and step-by-step progress 
 
 ## 📝 Commit History Explained
 
-### `d2...` — feat: Complete Milestone 4 - Verify persistent self-learning memory loop with Gemini
+### `dd028d3` — fix: Suppress optional dependency warnings from mem0 and qdrant in CLI
+* **Why:** Keeps terminal chat interface clean and distraction-free by muting non-critical warnings about optional NLP extras.
+* **What changed:** Added logging and warning filters in `main.py`.
+
+### `6f7d734` — feat: Complete Milestone 4 - Verify persistent self-learning memory loop with Gemini
 * **Why:** Aligns vector dimensions (768-d for Gemini embedding models) and verifies that facts stated in one session are automatically remembered in future sessions.
 * **What changed:** Configured `Qdrant` with 768-dim embeddings, updated Mem0 search filters, and set default model to `gemini-flash-lite-latest`.
 
